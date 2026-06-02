@@ -4,7 +4,7 @@
 
 | Field        | Details                        |
 |--------------|--------------------------------|
-| **Name**     | [Your Name Here]               |
+| **Name**     | Hieu Pham                      |
 | **Course**   | ICS499 – Software Engineering and Capstone Project |
 | **Assignment** | Assignment 2 + FP1           |
 | **Date**     | June 2026                      |
