@@ -308,3 +308,186 @@ It would **not** be ideal for:
 Overall, EspoCRM represents one of the best free/open-source CRM options available. It demonstrates that an open-source product, when well-maintained, can deliver a professional-grade experience comparable to low-tier commercial CRM products.
 
 ---
+
+---
+
+# Part 4 – CRM Architecture Exploration
+
+## Overview
+
+This section proposes an architecture for a custom-built CRM system using PHP and MySQL, designed as a class project / learning exercise. The MVP focuses on three core modules: **Contacts, Leads, and Opportunities** — the essential sales pipeline foundation of any CRM.
+
+---
+
+## Functional Modules
+
+### MVP Modules (Build First)
+
+| Module | Purpose | Why It's Priority |
+|--------|---------|-------------------|
+| **Contacts** | Store and manage individual customer records | Everything else links to a Contact — it's the foundation |
+| **Leads** | Track unqualified prospects entering the pipeline | Represents top-of-funnel; converts into Contacts/Opportunities |
+| **Opportunities** | Manage active deals with stage, value, and close date | Core of sales pipeline tracking |
+
+### Future Modules (Post-MVP)
+
+| Module | Purpose |
+|--------|---------|
+| **Accounts** | Group contacts by company/organization |
+| **Activities** | Log calls, meetings, emails against records |
+| **Tasks** | Assign follow-up actions with due dates |
+| **Reports** | Summarize pipeline health and conversion metrics |
+| **User Management** | Role-based access (admin, sales rep, manager) |
+
+---
+
+## Database Design
+
+The following tables support the MVP modules. Each table uses an auto-incrementing primary key and timestamps for auditing.
+
+### `contacts` table
+```sql
+CREATE TABLE contacts (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    first_name  VARCHAR(100) NOT NULL,
+    last_name   VARCHAR(100) NOT NULL,
+    email       VARCHAR(150) UNIQUE,
+    phone       VARCHAR(20),
+    company     VARCHAR(150),
+    status      ENUM('active', 'inactive') DEFAULT 'active',
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### `leads` table
+```sql
+CREATE TABLE leads (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    first_name   VARCHAR(100) NOT NULL,
+    last_name    VARCHAR(100) NOT NULL,
+    email        VARCHAR(150),
+    phone        VARCHAR(20),
+    source       ENUM('web', 'referral', 'email', 'cold_call', 'other') DEFAULT 'other',
+    status       ENUM('new', 'in_process', 'assigned', 'converted', 'dead') DEFAULT 'new',
+    assigned_to  INT,
+    converted_contact_id INT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (assigned_to) REFERENCES users(id),
+    FOREIGN KEY (converted_contact_id) REFERENCES contacts(id)
+);
+```
+
+### `opportunities` table
+```sql
+CREATE TABLE opportunities (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(200) NOT NULL,
+    contact_id   INT NOT NULL,
+    amount       DECIMAL(10,2),
+    stage        ENUM('prospecting','qualification','proposal','negotiation','closed_won','closed_lost') DEFAULT 'prospecting',
+    close_date   DATE,
+    assigned_to  INT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (contact_id) REFERENCES contacts(id),
+    FOREIGN KEY (assigned_to) REFERENCES users(id)
+);
+```
+
+### `users` table
+```sql
+CREATE TABLE users (
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    name         VARCHAR(150) NOT NULL,
+    email        VARCHAR(150) UNIQUE NOT NULL,
+    password     VARCHAR(255) NOT NULL,
+    role         ENUM('admin', 'manager', 'sales_rep') DEFAULT 'sales_rep',
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## Recommended Libraries and Tools
+
+| Library | Purpose | Why Use It |
+|---------|---------|------------|
+| **Bootstrap 5** | Frontend CSS framework | Quickly builds a clean, responsive UI without writing custom CSS from scratch |
+| **jQuery / DataTables** | Interactive tables with search, sort, pagination | Contacts and Leads list views need these features; DataTables adds them with minimal code |
+| **Chart.js** | Pipeline charts and dashboards | Visualizes opportunities by stage; easy to integrate with PHP-generated JSON data |
+| **PHPMailer** | Send emails from PHP | Handles SMTP email sending for notifications and follow-up reminders |
+| **Composer** | PHP dependency manager | Manages PHPMailer and other packages cleanly; standard in modern PHP projects |
+| **PDO (built-in PHP)** | Database abstraction layer | Safer than raw mysqli; supports prepared statements to prevent SQL injection |
+
+---
+
+## Security Considerations
+
+Security is critical even for a class project CRM, since it handles personal contact data.
+
+| Threat | Mitigation |
+|--------|-----------|
+| **SQL Injection** | Use PDO prepared statements for all database queries — never concatenate user input directly into SQL |
+| **Cross-Site Scripting (XSS)** | Escape all output with `htmlspecialchars()` before rendering in HTML |
+| **Authentication** | Hash passwords with `password_hash()` (bcrypt); never store plaintext passwords |
+| **Session Hijacking** | Regenerate session ID on login; use `session_regenerate_id(true)` |
+| **Unauthorized Access** | Check user role/session on every page load; redirect unauthenticated users to login |
+| **CSRF Attacks** | Include a CSRF token in all forms and validate it on submission |
+
+---
+
+## MVP Proposal
+
+### Goal
+Build the smallest functional CRM that demonstrates the core sales pipeline: capturing a Lead, converting it to a Contact, and tracking it as an Opportunity through to close.
+
+### MVP Feature Set
+
+1. **User login/logout** with session-based authentication
+2. **Contacts module** — Create, Read, Update, Delete (CRUD) contact records
+3. **Leads module** — CRUD leads with status tracking (New → In Process → Converted)
+4. **Opportunities module** — CRUD opportunities linked to contacts, with pipeline stage and deal value
+5. **Basic dashboard** — Count of open leads, active opportunities, and total pipeline value
+
+### What's Intentionally Left Out of MVP
+- Email integration
+- File attachments
+- Reporting module
+- Role-based permissions (single admin user is fine for MVP)
+- Mobile optimization
+
+### Development Sequence
+1. Set up database and `users` table → build login system
+2. Build Contacts CRUD (simplest module, no foreign keys)
+3. Build Leads CRUD with status dropdown
+4. Build Opportunities CRUD linked to Contacts
+5. Add dashboard with summary counts using simple SQL aggregate queries
+
+---
+
+## Architecture Diagram
+
+The architecture diagram is located at [`architecture/crm_architecture.png`](./architecture/crm_architecture.png).
+
+The system follows a classic three-tier web architecture:
+
+- **Presentation Layer** — HTML/CSS (Bootstrap), JavaScript (jQuery, Chart.js) rendered in the browser
+- **Application Layer** — PHP handles routing, business logic, form validation, session management, and database queries via PDO
+- **Data Layer** — MySQL stores all CRM data in relational tables with foreign key constraints
+
+All user requests flow through PHP, which queries MySQL and returns rendered HTML back to the browser. There is no separate API layer in the MVP — PHP renders pages server-side.
+
+---
+
+## Why This Stack for a Class Project?
+
+PHP and MySQL were chosen because:
+- Both are widely taught and well-documented, making it easy to find help
+- The LAMP stack (Linux, Apache, MySQL, PHP) runs on nearly any hosting environment including free tiers
+- PHP handles HTML generation, form processing, and database queries in a single language — reducing context switching for a solo developer
+- MySQL's relational model is a natural fit for CRM data, where contacts, leads, and opportunities are linked by foreign keys
+- This stack mirrors what EspoCRM and SuiteCRM themselves are built on, making the research in Parts 2 and 3 directly relevant
+
+---
