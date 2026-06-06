@@ -346,6 +346,19 @@ This section proposes an architecture for a custom-built CRM system using PHP an
 The following tables support the MVP modules. Each table uses an auto-incrementing primary key and timestamps for auditing.
 
 ### `contacts` table
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT | Unique identifier |
+| `first_name` | VARCHAR(100) | NOT NULL | Contact's first name |
+| `last_name` | VARCHAR(100) | NOT NULL | Contact's last name |
+| `email` | VARCHAR(150) | UNIQUE | Must be unique across all contacts |
+| `phone` | VARCHAR(20) | — | Optional phone number |
+| `company` | VARCHAR(150) | — | Company or organization name |
+| `status` | ENUM | DEFAULT 'active' | Either 'active' or 'inactive' |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Set automatically on insert |
+| `updated_at` | TIMESTAMP | ON UPDATE CURRENT_TIMESTAMP | Auto-updates on every change |
+
 ```sql
 CREATE TABLE contacts (
     id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -361,6 +374,21 @@ CREATE TABLE contacts (
 ```
 
 ### `leads` table
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT | Unique identifier |
+| `first_name` | VARCHAR(100) | NOT NULL | Lead's first name |
+| `last_name` | VARCHAR(100) | NOT NULL | Lead's last name |
+| `email` | VARCHAR(150) | — | Optional — not all leads have email |
+| `phone` | VARCHAR(20) | — | Optional phone number |
+| `source` | ENUM | DEFAULT 'other' | Where the lead came from (web, referral, etc.) |
+| `status` | ENUM | DEFAULT 'new' | Pipeline status: new → in_process → converted/dead |
+| `assigned_to` | INT | FK → users(id) | Which sales rep owns this lead |
+| `converted_contact_id` | INT | FK → contacts(id) | Links to Contact record when converted |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Set automatically on insert |
+| `updated_at` | TIMESTAMP | ON UPDATE CURRENT_TIMESTAMP | Auto-updates on every change |
+
 ```sql
 CREATE TABLE leads (
     id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -380,6 +408,19 @@ CREATE TABLE leads (
 ```
 
 ### `opportunities` table
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT | Unique identifier |
+| `name` | VARCHAR(200) | NOT NULL | Deal name (e.g. "Acme Corp - 50 Licenses") |
+| `contact_id` | INT | NOT NULL, FK → contacts(id) | The contact this deal is linked to |
+| `amount` | DECIMAL(10,2) | — | Expected deal value in dollars |
+| `stage` | ENUM | DEFAULT 'prospecting' | Pipeline stage from prospecting to closed |
+| `close_date` | DATE | — | Expected or actual close date |
+| `assigned_to` | INT | FK → users(id) | Sales rep responsible for this deal |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Set automatically on insert |
+| `updated_at` | TIMESTAMP | ON UPDATE CURRENT_TIMESTAMP | Auto-updates on every change |
+
 ```sql
 CREATE TABLE opportunities (
     id           INT AUTO_INCREMENT PRIMARY KEY,
@@ -397,6 +438,16 @@ CREATE TABLE opportunities (
 ```
 
 ### `users` table
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `id` | INT | PRIMARY KEY, AUTO_INCREMENT | Unique identifier |
+| `name` | VARCHAR(150) | NOT NULL | Full name of the user |
+| `email` | VARCHAR(150) | UNIQUE, NOT NULL | Used as login username |
+| `password` | VARCHAR(255) | NOT NULL | Stored as bcrypt hash — never plaintext |
+| `role` | ENUM | DEFAULT 'sales_rep' | Controls access level: admin, manager, sales_rep |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Set automatically on insert |
+
 ```sql
 CREATE TABLE users (
     id           INT AUTO_INCREMENT PRIMARY KEY,
